@@ -1,0 +1,364 @@
+; You may customize this and other start-up templates; 
+; The location of this template is c:\emu8086\inc\0_com_template.txt
+
+ORG 100h              
+   
+   CALL MAIN_PANEL     
+RET                   
+
+MAIN_PANEL:
+    CALL CLEAR_SCREEN  
+    CALL DISP_MESS     
+    CALL GET_USER_CHOICE 
+    RET                
+
+CLEAR_SCREEN:
+    CALL INIT_MOUSE    
+    MOV AL, 00h       
+    MOV AH, 06h       
+    MOV BH, 1001_1111b 
+    XOR CX, CX         
+    MOV DH, 24        
+    MOV DL, 79         
+    INT 10h            
+    RET            
+
+CLEAR_KB_BUFFER:
+    MOV AH, 0Ch       
+    INT 21h            
+    RET                
+
+    
+DISP_MESS:               
+    MOV AL, 0               
+    MOV BH, 0               
+    MOV BL, 09Eh            ; Set text color to light yellow on black (attribute)
+
+    ; Display "MENU" at row 2, column 39
+    MOV DH, 02              ; Set row to 2
+    MOV DL, 39              ; Set column to 39 (centered horizontally)
+    MOV CX, 4               ; Length of the string to display ("MENU" has 4 characters)
+    MOV BP, OFFSET MENU_TEXT ; Load address of the "MENU" text
+    CALL PRINT_STR          
+
+    ; Display "1 - HORIZONTAL STRIPES" at row 5, column 0
+    MOV DH, 05              
+    XOR DL, DL             
+    MOV CX, 22              
+    MOV BP, OFFSET FIRST_CHOICE 
+    CALL PRINT_STR         
+
+    ; Display "2 - VERTICAL STRIPES" at row 6, column 0
+    MOV DH, 06              
+    XOR DL, DL             
+    MOV CX, 20              
+    MOV BP, OFFSET SECOND_CHOICE 
+    CALL PRINT_STR          
+
+    ; Display "F2 - CHECKERED PATTERN" at row 7, column 0
+    MOV DH, 07              
+    XOR DL, DL              
+    MOV CX, 22              
+    MOV BP, OFFSET THIRD_CHOICE 
+    CALL PRINT_STR           
+
+    ; Display "Q - QUIT" at row 9, column 0
+    MOV DH, 09              
+    XOR DL, DL              
+    MOV CX, 8              
+    MOV BP, OFFSET QUIT_TEXT 
+    CALL PRINT_STR           
+
+    ; Display "ENTER CHOICE: " at row 11, column 18
+    MOV DH, 11             
+    MOV DL, 18              
+    MOV CX, 13              
+    MOV BP, OFFSET CHOICE_TEXT
+    CALL PRINT_STR           
+    RET                      
+
+GET_USER_CHOICE:
+    MOV AX, 3               
+    INT 33h                 
+    CMP BX, 1              
+    JE CHECK_MOUSE          
+
+    MOV AH, 1h              
+    INT 16h                 
+    JNZ CHECK_KEYBOARD      
+
+    JMP GET_USER_CHOICE    
+
+
+CHECK_KEYBOARD:
+    CMP AL, 31h          
+    JE SETUP_HORI        
+    CMP AL, 32h           
+    JE SETUP_VERT        
+    CMP AH, 3Ch           
+    JE SETUP_CHECK        
+    CMP AL, 71h           
+    JE QUIT               
+    CALL CLEAR_KB_BUFFER   
+    JMP MAIN_PANEL        
+    RET                   
+
+CHECK_MOUSE:
+    CMP CX, 0B6h         
+    JL CHECK_FIRST        
+
+CHECK_FIRST: 
+    CMP DX, 27h          
+    JG CHECK_FIRST_LOWER  
+    
+CHECK_FIRST_LOWER:
+    CMP DX, 02Fh          
+    JL SETUP_HORI         
+    JMP CHECK_SECOND      
+
+CHECK_SECOND:
+    CMP DX, 30h           
+    JG CHECK_SECOND_LOWER 
+
+CHECK_SECOND_LOWER:
+    CMP DX, 36h           
+    JL SETUP_VERT         
+    JMP CHECK_THIRD       
+
+CHECK_THIRD: 
+    CMP DX, 38h           
+    JG CHECK_THIRD_LOWER  
+
+CHECK_THIRD_LOWER:
+    CMP DX, 3Fh          
+    JL SETUP_CHECK       
+    JMP CHECK_QUIT        
+
+CHECK_QUIT:
+    CMP DX, 48h          
+    JL GET_USER_CHOICE   
+    CMP CX, 4Dh          
+    JG GET_USER_CHOICE 
+    CMP DX, 4Fh          
+    JL QUIT               
+    JMP GET_USER_CHOICE    
+
+PROMPT_CONTINUE:  
+    MOV DH, 22            
+    MOV DL, 30           
+    MOV AH, 2            
+    INT 10h              
+    
+    MOV DX, OFFSET KEY_PROMPT 
+    MOV AH, 9             
+    INT 21h              
+    
+    MOV AH, 0            
+    INT 16h              
+    RET                   
+
+SETUP_HORI:
+    CALL CLEAR_SCREEN  
+    CALL CLEAR_KB_BUFFER
+    
+    MOV AH, 06h
+    XOR AL, AL 
+    
+    MOV BH, 0000_0000b
+    XOR CX, CX
+    MOV DH, 6
+    MOV DL, 79
+    INT 10h
+    
+    MOV BH, 1101_0000b
+    MOV CH, 6
+    MOV DH, 12
+    MOV DL, 79
+    INT 10h
+    
+    MOV BH, 1110_0000b
+    MOV CH, 12
+    MOV DH, 18
+    MOV DL, 79
+    INT 10h 
+    
+    MOV BH, 1001_0000b
+    MOV CH, 18
+    MOV DH, 24
+    MOV DL, 79
+    INT 10h
+    
+    MOV AL, 0
+    MOV BH, 0
+    MOV BL, 1001_0000b
+    
+    CALL PROMPT_CONTINUE
+    CALL MAIN_PANEL
+    RET
+
+SETUP_VERT:
+    CALL CLEAR_SCREEN
+    CALL CLEAR_KB_BUFFER
+    
+    MOV AH, 06h
+    XOR AL, AL 
+    
+    MOV BH, 0000_0000b
+    XOR CX, CX
+    MOV DH, 24
+    MOV DL, 20
+    INT 10h
+    
+    MOV BH, 1101_0000b
+    MOV CL, 20
+    MOV DL, 40
+    INT 10h
+    
+    MOV BH, 1110_0000b
+    MOV CL, 40
+    MOV DL, 60
+    INT 10h 
+    
+    MOV BH, 1001_0000b
+    MOV CL, 60
+    MOV DL, 79
+    INT 10h
+    
+    MOV AL, 0
+    MOV BH, 0
+    MOV BL, 1001_0000b
+    
+    CALL PROMPT_CONTINUE
+    CALL MAIN_PANEL
+    RET
+
+SETUP_CHECK:
+    CALL CLEAR_SCREEN
+    CALL CLEAR_KB_BUFFER 
+    
+    MOV AH, 06h
+    XOR AL, AL
+    
+    ; FIRST ROW
+    MOV BH, 0000_0000b
+    XOR CX, CX
+    MOV DH, 5
+    MOV DL, 20
+    INT 10h
+    
+    MOV BH, 1101_0000b
+    MOV CL, 20
+    MOV DL, 40
+    INT 10h
+    
+    MOV BH, 1110_0000b
+    MOV CL, 40
+    MOV DL, 60
+    INT 10h 
+    
+    MOV BH, 1001_0000b
+    MOV CL, 60
+    MOV DL, 79
+    INT 10h
+    
+    ; SECOND ROW
+    MOV BH, 1001_0000b
+    MOV CH, 6
+    XOR CL, CL
+    MOV DH, 11
+    MOV DL, 20
+    INT 10h
+    
+    MOV BH, 0000_0000b
+    MOV CL, 20
+    MOV DL, 40
+    INT 10h
+    
+    MOV BH, 1101_0000b
+    MOV CL, 40
+    MOV DL, 60
+    INT 10h 
+    
+    MOV BH, 1110_0000b
+    MOV CL, 60
+    MOV DL, 79
+    INT 10h  
+    
+    ; THIRD ROW
+    MOV BH, 1110_0000b
+    MOV CH, 12
+    XOR CL, CL
+    MOV DH, 17
+    MOV DL, 20
+    INT 10h
+    
+    MOV BH, 1001_0000b
+    MOV CL, 20
+    MOV DL, 40
+    INT 10h
+    
+    MOV BH, 0000_0000b
+    MOV CL, 40
+    MOV DL, 60
+    INT 10h 
+    
+    MOV BH, 1101_0000b
+    MOV CL, 60
+    MOV DL, 79
+    INT 10h  
+    
+    ; FOURTH ROW
+    MOV BH, 1101_0000b
+    MOV CH, 18
+    XOR CL, CL
+    MOV DH, 24
+    MOV DL, 20
+    INT 10h
+    
+    MOV BH, 1110_0000b
+    MOV CL, 20
+    MOV DL, 40
+    INT 10h
+    
+    MOV BH, 1001_0000b
+    MOV CL, 40
+    MOV DL, 60
+    INT 10h 
+    
+    MOV BH, 0000_0000b
+    MOV CL, 60
+    MOV DL, 79
+    INT 10h 
+    
+    CALL PROMPT_CONTINUE
+    CALL MAIN_PANEL
+    RET         
+    
+PRINT_STR:
+    PUSH CS               ; Save the current code segment to the stack
+    POP ES                ; Load the code segment into ES for string operations
+    MOV AH, 13h           ; Set AH = 13h (function to print a string at the current cursor position)
+    INT 10H               ; Call BIOS interrupt 10h to execute the print string function
+    JMP msg1end           ; Jump to the end of the procedure
+msg1end:
+    RET                   ; Return from PRINT_STR
+
+INIT_MOUSE:
+    MOV AX, 1             ; Set AX = 1 to initialize the mouse (enable mouse support)
+    INT 33h               ; Call mouse interrupt 33h to initialize the mouse
+    RET                   ; Return from INIT_MOUSE
+
+QUIT:
+    RET                   ; Simply return from QUIT (exit point for the program)
+
+    
+
+MENU_TEXT DB 'MENU', '$'
+FIRST_CHOICE DB '1 - HORIZONTAL STRIPES', '$'
+SECOND_CHOICE DB '2 - VERTICAL STRIPES', '$'
+THIRD_CHOICE DB 'F2 - CHECKERED PATTERN', '$'
+QUIT_TEXT DB 'Q - QUIT', '$' 
+CHOICE_TEXT DB 'ENTER CHOICE: ', '$'
+KEY_PROMPT DB 'Press any key to continue', '$'
+
+RET
